@@ -1,6 +1,6 @@
 const Note = require("../models/Note");
 const { validationResult } = require("express-validator");
-const { summarizeText } = require("../services/geminiService");
+const { summarizeText, generateTitle } = require("../services/geminiService");
 
 // ─────────────────────────────────────────────
 // @desc    Get all notes (latest first)
@@ -101,7 +101,11 @@ const createNote = async (req, res) => {
   }
 
   try {
-    const { title, content } = req.body;
+    let { title, content } = req.body;
+
+    if (!title || title.trim() === "") {
+      title = await generateTitle(content);
+    }
 
     const note = await Note.create({ title, content, user: req.user._id });
 

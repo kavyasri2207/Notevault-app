@@ -15,8 +15,7 @@ const { protect } = require("../middleware/authMiddleware");
 // ── Validation Rules ──────────────────────────
 const noteValidationRules = [
   body("title")
-    .notEmpty()
-    .withMessage("Title is required")
+    .optional({ checkFalsy: true })
     .isString()
     .withMessage("Title must be a string")
     .trim()
