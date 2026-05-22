@@ -129,4 +129,37 @@ const generateTitle = async (content) => {
   }
 };
 
-module.exports = { summarizeText, generateTitle };
+const chatWithNote = async (title, content, question) => {
+  if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+
+  try {
+    const prompt = `You are a helpful AI assistant inside a notes application. Answer the user's question based strictly on the note below. Do not make up information that isn't in the note. Keep your answer concise and helpful.
+
+Note Title: ${title}
+Note Content: ${content}
+
+User Question: ${question}`;
+
+    const model = getGeminiModels()[0]; 
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
+        }),
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || "Chat failed");
+
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "I couldn't generate an answer.";
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+module.exports = { summarizeText, generateTitle, chatWithNote };

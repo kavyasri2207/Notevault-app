@@ -9,6 +9,7 @@ const {
   updateNote,
   deleteNote,
   summarizeNote,
+  chatNote,
 } = require("../controllers/notesController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -61,5 +62,6 @@ router.post("/", noteValidationRules, createNote);
 router.put("/:id", updateValidationRules, updateNote);
 router.delete("/:id", deleteNote);
 router.post("/:id/summarize", summarizeNote);
+router.post("/:id/chat", chatNote);
 
 module.exports = router;

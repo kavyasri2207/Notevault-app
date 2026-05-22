@@ -1,6 +1,6 @@
 const Note = require("../models/Note");
 const { validationResult } = require("express-validator");
-const { summarizeText, generateTitle } = require("../services/geminiService");
+const { summarizeText, generateTitle, chatWithNote } = require("../services/geminiService");
 
 // ─────────────────────────────────────────────
 // @desc    Get all notes (latest first)
@@ -260,6 +260,35 @@ const summarizeNote = async (req, res) => {
   }
 };
 
+// @desc    Chat with a specific note
+// @route   POST /api/notes/:id/chat
+// @access  Private
+const chatNote = async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question) {
+      return res.status(400).json({ success: false, message: "Question is required" });
+    }
+
+    const note = await Note.findOne({ _id: req.params.id, user: req.user._id });
+    if (!note) {
+      return res.status(404).json({ success: false, message: "Note not found" });
+    }
+
+    const answer = await chatWithNote(note.title, note.content, question);
+
+    return res.status(200).json({
+      success: true,
+      data: { answer },
+    });
+  } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(400).json({ success: false, message: "Invalid note ID format" });
+    }
+    return res.status(500).json({ success: false, message: "Server error during chat", error: error.message });
+  }
+};
+
 module.exports = {
   getAllNotes,
   getNoteById,
@@ -267,4 +296,5 @@ module.exports = {
   updateNote,
   deleteNote,
   summarizeNote,
+  chatNote,
 };

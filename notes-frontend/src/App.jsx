@@ -8,6 +8,7 @@ import {
   signup,
   summarizeNote,
   updateNote,
+  chatWithNote,
 } from "./api/notesApi";
 import "./App.css";
 
@@ -155,10 +156,14 @@ const AuthPanel = ({ onAuthed }) => {
   );
 };
 
-const NoteCard = ({ note, onEdit, onDelete, onSummarize }) => {
+const NoteCard = ({ note, onEdit, onDelete, onSummarize, onChat }) => {
   const [deleting, setDeleting] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
   const [summary, setSummary] = useState("");
+  const [chatting, setChatting] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLog, setChatLog] = useState([]);
+  const [showChat, setShowChat] = useState(false);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -175,11 +180,34 @@ const NoteCard = ({ note, onEdit, onDelete, onSummarize }) => {
     }
   };
 
+  const handleChat = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || chatting) return;
+
+    const question = chatInput.trim();
+    setChatInput("");
+    setChatLog(prev => [...prev, { role: "user", text: question }]);
+    setChatting(true);
+
+    try {
+      const answer = await onChat(note._id, question);
+      setChatLog(prev => [...prev, { role: "ai", text: answer }]);
+    } catch {
+      setChatLog(prev => [...prev, { role: "ai", text: "Sorry, I couldn't process that request." }]);
+    } finally {
+      setChatting(false);
+    }
+  };
+
   return (
     <article className={`note-card ${deleting ? "deleting" : ""}`}>
       <div className="note-card-header">
         <span className="note-date">{formatDate(note.createdAt)}</span>
         <div className="note-actions">
+          <button className="action-btn" onClick={() => setShowChat(!showChat)} title="Chat with Note">
+            <Icon name="spark" size={15} />
+            <span>Chat</span>
+          </button>
           <button className="action-btn ai" onClick={handleSummarize} title="Summarize with Gemini" disabled={summarizing}>
             <Icon name="spark" size={15} />
             <span>{summarizing ? "Summarizing" : "Summarize"}</span>
@@ -197,6 +225,30 @@ const NoteCard = ({ note, onEdit, onDelete, onSummarize }) => {
       <h3 className="note-title">{note.title}</h3>
       <p className="note-content">{note.content}</p>
       {summary && <div className="summary-box">{summary}</div>}
+      
+      {showChat && (
+        <div className="chat-box">
+          <div className="chat-log">
+            {chatLog.map((msg, i) => (
+              <div key={i} className={`chat-msg ${msg.role}`}>
+                <strong>{msg.role === "user" ? "You" : "AI"}:</strong> {msg.text}
+              </div>
+            ))}
+            {chatting && <div className="chat-msg ai"><strong>AI:</strong> Thinking...</div>}
+          </div>
+          <form className="chat-form" onSubmit={handleChat}>
+            <input 
+              type="text" 
+              placeholder="Ask a question about this note..." 
+              value={chatInput} 
+              onChange={e => setChatInput(e.target.value)} 
+              disabled={chatting}
+            />
+            <button type="submit" disabled={!chatInput.trim() || chatting}>Ask</button>
+          </form>
+        </div>
+      )}
+
       {note.updatedAt !== note.createdAt && <span className="note-updated">edited {formatDate(note.updatedAt)}</span>}
     </article>
   );
@@ -361,6 +413,16 @@ export default function App() {
     }
   };
 
+  const handleChat = async (id, question) => {
+    try {
+      const res = await chatWithNote(id, question);
+      return res.data.data.answer;
+    } catch (err) {
+      showToast(err.response?.data?.error || err.response?.data?.message || "Chat failed", "error");
+      throw err;
+    }
+  };
+
   const openNew = () => {
     setEditNote(null);
     setModalOpen(true);
@@ -416,7 +478,7 @@ export default function App() {
         ) : (
           <div className="notes-grid">
             {notes.map((note) => (
-              <NoteCard key={note._id} note={note} onEdit={handleEdit} onDelete={handleDelete} onSummarize={handleSummarize} />
+              <NoteCard key={note._id} note={note} onEdit={handleEdit} onDelete={handleDelete} onSummarize={handleSummarize} onChat={handleChat} />
             ))}
           </div>
         )}

@@ -550,3 +550,46 @@ button { border: 0; }
   .modal-footer { flex-direction: column-reverse; }
   .modal-footer button { width: 100%; }
 }
+
+.chat-box {
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.chat-log {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-msg {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.chat-msg.user { color: var(--text-2); }
+.chat-msg.ai { color: var(--text-1); background: rgba(255, 255, 255, 0.5); padding: 6px 8px; border-radius: 6px; }
+.chat-form {
+  display: flex;
+  gap: 8px;
+}
+.chat-form input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+.chat-form button {
+  background: var(--accent);
+  color: white;
+  border-radius: var(--radius);
+  padding: 0 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.chat-form button:disabled { opacity: 0.5; cursor: not-allowed; }

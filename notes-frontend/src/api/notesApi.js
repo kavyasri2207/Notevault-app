@@ -21,3 +21,4 @@ export const createNote = (data) => API.post("/notes", data);
 export const updateNote = (id, data) => API.put(`/notes/${id}`, data);
 export const deleteNote = (id) => API.delete(`/notes/${id}`);
 export const summarizeNote = (id) => API.post(`/notes/${id}/summarize`);
+export const chatWithNote = (id, question) => API.post(`/notes/${id}/chat`, { question });
