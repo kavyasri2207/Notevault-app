@@ -72,7 +72,12 @@ Content: ${content}`;
     if (responseText) {
       try {
         const parsed = JSON.parse(responseText);
-        let finalOutput = cleanSummary(parsed.summary || "");
+        
+        let rawSummary = parsed.summary || "";
+        if (Array.isArray(rawSummary)) {
+          rawSummary = rawSummary.map(s => "• " + s).join("\n");
+        }
+        let finalOutput = cleanSummary(rawSummary);
 
         if (parsed.actionItems && parsed.actionItems.length > 0) {
           finalOutput += "\n\n🎯 Action Items:\n" + parsed.actionItems.map(item => "• " + item).join("\n");
