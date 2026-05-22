@@ -24,14 +24,16 @@ const summarizeText = async ({ title, content }) => {
     throw new Error("GEMINI_API_KEY is not configured");
   }
 
-  const prompt = [
-    "Summarize this note for a productivity notes app.",
-    "Return only the summary content.",
-    "Do not include an introduction, title, heading, or phrase like \"Here's a summary\".",
-    "Use 3-5 concise bullet points and preserve important actions, dates, and decisions.",
-    `Title: ${title}`,
-    `Content: ${content}`,
-  ].join("\n\n");
+  const prompt = `Analyze this note for a productivity app.
+Please return a JSON object with the exact following structure:
+{
+  "summary": "3-5 concise bullet points summarizing the main ideas of the note",
+  "actionItems": ["Array of extracted tasks or action items. Empty array if none."],
+  "tags": ["Array of 2-3 relevant topic tags (e.g. #work, #ideas)"]
+}
+
+Title: ${title}
+Content: ${content}`;
 
   let lastError = null;
 
@@ -45,7 +47,8 @@ const summarizeText = async ({ title, content }) => {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 220,
+            maxOutputTokens: 800,
+            responseMimeType: "application/json",
           },
         }),
       }
@@ -64,15 +67,28 @@ const summarizeText = async ({ title, content }) => {
       throw lastError;
     }
 
-    const summary = data.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text)
-      .join("")
-      .trim();
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    const cleanedSummary = summary ? cleanSummary(summary) : "";
+    if (responseText) {
+      try {
+        const parsed = JSON.parse(responseText);
+        let finalOutput = cleanSummary(parsed.summary || "");
 
-    if (cleanedSummary) {
-      return cleanedSummary;
+        if (parsed.actionItems && parsed.actionItems.length > 0) {
+          finalOutput += "\n\n🎯 Action Items:\n" + parsed.actionItems.map(item => "• " + item).join("\n");
+        }
+
+        if (parsed.tags && parsed.tags.length > 0) {
+          finalOutput += "\n\n🏷️ Tags: " + parsed.tags.map(tag => tag.startsWith("#") ? tag : "#" + tag).join(" ");
+        }
+
+        if (finalOutput) {
+          return finalOutput.trim();
+        }
+      } catch (err) {
+        // Fallback if the AI didn't return valid JSON
+        return cleanSummary(responseText);
+      }
     }
 
     lastError = new Error(`Gemini returned an empty summary from ${model}`);
@@ -81,4 +97,31 @@ const summarizeText = async ({ title, content }) => {
   throw lastError || new Error("Gemini summarization failed");
 };
 
-module.exports = { summarizeText };
+const generateTitle = async (content) => {
+  if (!process.env.GEMINI_API_KEY) return "Untitled Note";
+
+  try {
+    const prompt = `Read the following note and generate a very short, catchy title (max 5 words). Return ONLY the title string without quotes.\n\nContent: ${content}`;
+    const model = getGeminiModels()[0]; // Use the first model (e.g., flash-lite)
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 20 },
+        }),
+      }
+    );
+
+    const data = await response.json();
+    let generatedTitle = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Untitled Note";
+    return generatedTitle.replace(/^["']|["']$/g, ''); // remove quotes if any
+  } catch (error) {
+    return "Untitled Note";
+  }
+};
+
+module.exports = { summarizeText, generateTitle };

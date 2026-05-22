@@ -216,7 +216,6 @@ const Modal = ({ isOpen, onClose, editNote, onSave }) => {
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    if (!title.trim()) return setError("Title is required");
     if (!content.trim()) return setError("Content is required");
     setSaving(true);
     setError("");
